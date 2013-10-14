@@ -1,0 +1,167 @@
+/* Program name: asgn4-cummingsc4.c
+   compile:      gcc asgn4-cummingsc4.c
+   execute:      a.out user.master user.index user.update
+   description:   
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+typedef struct USER{
+	int userid;
+	char last[10];
+	char first[10];
+	int age;
+}User;
+
+typedef struct INDEX{
+    	int userid;
+	int position;
+}Index;
+
+void thePrinter(char *argv[]);
+void addUser(char *argv[], User user);
+void addToIndex(char *argv[], User user, int position, int search);
+User getUser(int userid, int masterloop);
+void addToIndex(char *argv[], User user, int position, int search);
+void updateUser(char *argv[], FILE *file);
+
+int main(int argc, char *argv[]) {
+   User userArray[200];
+   int fd = 0; //The master file
+   int totalUsers = 0;
+   int position = 0;
+   User user;
+   int i = 0;
+   int search = 0;
+   FILE *file; //The update file
+
+   if (argc != 4) {    // argc = # of parameters + 1
+      printf("please enter read file\n");
+      return -1;
+   }
+
+   // argv[0] is always the name of the program a,out
+   // argv[1] is the first parameter, the input file name user.master
+   // argv[2] user.index
+   // argv[3] user.update
+   file = fopen(argv[3], "r");
+   if (file == NULL) {
+      printf("error: cannot open input file\n");
+      return -1;
+   }
+
+   char operationCode[1];
+   while(fscanf(file, "%s", operationCode) != EOF){
+     if(operationCode[0] == '+'){
+       fscanf(file, "%d%s%s%d", &user.userid,
+               user.last, user.first, &user.age);
+	 addUser(argv, user);
+         position = position + 1;
+         totalUsers = totalUsers +1;
+         printf("d\n", position);
+     }else if(operationCode == "*"){
+       fscanf(file, "%d%d", &user.userid, &user.age);
+       updateUser(argv, file);
+     }else if(operationCode  == "?"){
+       fscanf(file, "%d", &user.userid);
+       //getUser(argv, user, userid, masterloop);
+     }
+   }  
+   fclose(file);
+   thePrinter(argv);
+}
+
+void addUser(char *argv[], User user){
+  int fd = 0;
+  int num = 0;
+  fd = open(argv[1], O_RDWR|O_CREAT, S_IRWXU);
+  num = write(fd, &user, sizeof(user));
+  close(fd);
+}
+
+void addToIndex(char *argv[], User user, int position, int search){
+  Index index;
+  User temp;
+  int indexloop;
+
+  indexloop = open(argv[2], O_RDWR|O_CREAT, S_IRWXU);
+  index.userid = user.userid;
+  index.position = position;
+  write(indexloop, &index,  sizeof(index));
+  printf("%d, %d\n", index.userid, index.position);
+  close(indexloop);
+
+}
+
+
+void updateUser(char *argv[], FILE *file){
+  int fd = 0;
+  User user;
+  User upUser;
+  int position = 1;
+
+  fscanf(file, "%d%d", &(upUser.userid), &(upUser.age));
+
+  fd = open(argv[1], O_RDWR|O_CREAT, S_IRWXU);
+  user = getUser(fd, upUser.userid);
+  if(user.userid != -1) {
+
+    lseek(fd, sizeof(upUser) *position, 0);
+    read(fd, &(upUser.userid), sizeof(int));
+
+    int byteRead = (sizeof(user)-2*sizeof(int))/2;
+
+    read(fd, &(upUser.userid), sizeof(int));
+    read(fd, upUser.first, byteRead);
+    read(fd, upUser.last, byteRead);
+
+    printf("%d, %s, %s, %d\n", upUser.userid,
+               upUser.last, upUser.first, upUser.age);
+
+    lseek(fd, sizeof(user)*position, 0);
+    write(fd, &upUser, sizeof(upUser));
+  }else{
+   printf("Does not exist\n");
+  }
+}
+
+User getUser(int userid, int masterloop){
+  User temp;
+  User exists;
+  exists.userid = 0;
+
+  int num = read(masterloop, &temp, sizeof(temp));
+  while(num != 0){
+   if(temp.userid == userid) {
+     exists = temp;
+    }
+  num = read(masterloop, &temp, sizeof(temp));
+  }
+  return exists;
+}
+
+
+void thePrinter(char *argv[]){
+  printf("Master\n");
+  int userid;
+  int age;
+  char last[20];
+  char first[20];
+  User user;
+  int fd = 0;
+  int num = 0;
+
+  fd = open(argv[1], O_RDWR|O_CREAT, S_IRWXU);
+  num = read(fd, &user, sizeof(user));
+
+  while(num!=0){
+    printf("%d, %s, %s, %d\n", user.userid,
+               user.last, user.first, user.age);
+    num = read(fd, &user, sizeof(user));  
+   } 
+ close(fd);
+}
+
+
