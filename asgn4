@@ -23,7 +23,7 @@ typedef struct INDEX{
 void thePrinter(char *argv[]);
 void addUser(char *argv[], User user);
 void addToIndex(char *argv[], User user, int position, int search);
-User getUser(int userid, int masterloop);
+User getUser(int userid, int fd);
 void addToIndex(char *argv[], User user, int position, int search);
 void updateUser(char *argv[], FILE *file);
 
@@ -60,17 +60,31 @@ int main(int argc, char *argv[]) {
 	 addUser(argv, user);
          position = position + 1;
          totalUsers = totalUsers +1;
-         printf("d\n", position);
-     }else if(operationCode == "*"){
-       fscanf(file, "%d%d", &user.userid, &user.age);
+         printf("%d\n", position);
+     }else if(operationCode[0] == '*'){
+      // fscanf(file, "%d%d", &user.userid, &user.age);
        updateUser(argv, file);
-     }else if(operationCode  == "?"){
+     }else if(operationCode[0]  == '?'){
        fscanf(file, "%d", &user.userid);
        //getUser(argv, user, userid, masterloop);
      }
    }  
    fclose(file);
    thePrinter(argv);
+}
+User getUser(int userid, int fd){
+  User temp;
+  User exists;
+  exists.userid = -1;
+
+  int num = read(fd, &temp, sizeof(temp));
+  while(num != 0){
+   if(temp.userid == userid) {
+     exists = temp;
+    }
+  num = read(fd, &temp, sizeof(temp));
+  }
+  return exists;
 }
 
 void addUser(char *argv[], User user){
@@ -95,60 +109,42 @@ void addToIndex(char *argv[], User user, int position, int search){
 
 }
 
-
 void updateUser(char *argv[], FILE *file){
+  printf("Update\n");
   int fd = 0;
   User user;
   User upUser;
   int position = 1;
-
-  fscanf(file, "%d%d", &(upUser.userid), &(upUser.age));
-
+  
+  fscanf(file,"%d%d", &(upUser.userid), &(upUser.age));
+  
   fd = open(argv[1], O_RDWR|O_CREAT, S_IRWXU);
-  user = getUser(fd, upUser.userid);
+  user = getUser(upUser.userid, fd);
   if(user.userid != -1) {
-
+    
     lseek(fd, sizeof(upUser) *position, 0);
     read(fd, &(upUser.userid), sizeof(int));
-
+    
+    //This is giving me problems
     int byteRead = (sizeof(user)-2*sizeof(int))/2;
 
     read(fd, &(upUser.userid), sizeof(int));
     read(fd, upUser.first, byteRead);
     read(fd, upUser.last, byteRead);
 
-    printf("%d, %s, %s, %d\n", upUser.userid,
-               upUser.last, upUser.first, upUser.age);
+    printf("%d, %s, %s  %d\n",upUser.userid, 
+          upUser.last, upUser.first, upUser.age);
 
     lseek(fd, sizeof(user)*position, 0);
     write(fd, &upUser, sizeof(upUser));
   }else{
-   printf("Does not exist\n");
-  }
-}
-
-User getUser(int userid, int masterloop){
-  User temp;
-  User exists;
-  exists.userid = 0;
-
-  int num = read(masterloop, &temp, sizeof(temp));
-  while(num != 0){
-   if(temp.userid == userid) {
-     exists = temp;
-    }
-  num = read(masterloop, &temp, sizeof(temp));
-  }
-  return exists;
+    printf("Does not exist\n");
+  } 
 }
 
 
 void thePrinter(char *argv[]){
   printf("Master\n");
-  int userid;
-  int age;
-  char last[20];
-  char first[20];
   User user;
   int fd = 0;
   int num = 0;
@@ -157,7 +153,7 @@ void thePrinter(char *argv[]){
   num = read(fd, &user, sizeof(user));
 
   while(num!=0){
-    printf("%d, %s, %s, %d\n", user.userid,
+  printf("%d %s %s %d\n", user.userid,
                user.last, user.first, user.age);
     num = read(fd, &user, sizeof(user));  
    } 
